@@ -30,11 +30,15 @@
         }
 
         public var topWindow: UIWindow? {
+            #if os(xrOS)
+            return self.topWindowScene?.windows.first
+            #else
             if #available(iOS 13.0, tvOS 13.0, *) {
                 return self.topWindowScene?.windows.first
             } else {
                 return self.keyWindow
             }
+            #endif
         }
 
         var topViewController: UIViewController? {

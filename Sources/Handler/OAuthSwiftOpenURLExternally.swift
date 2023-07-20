@@ -28,7 +28,11 @@ open class OAuthSwiftOpenURLExternally: OAuthSwiftURLHandlerType {
             if #available(iOS 10.0, tvOS 10.0, *) {
                 UIApplication.shared.open(url)
             } else {
+                #if os(xrOS)
+                UIApplication.shared.open(url)
+                #else
                 UIApplication.shared.openURL(url)
+                #endif
             }
             #endif
             #elseif os(watchOS)
