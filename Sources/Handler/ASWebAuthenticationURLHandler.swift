@@ -6,7 +6,7 @@
 //  Copyright © 2019 Dongri Jin, Marchand Eric. All rights reserved.
 //
 
-#if targetEnvironment(macCatalyst) || os(iOS)
+#if targetEnvironment(macCatalyst) || os(iOS) || os(visionOS)
 
 import AuthenticationServices
 import Foundation
