@@ -271,7 +271,7 @@ open class OAuthSwiftClient: NSObject {
                 }
 
                 this.credential.oauthToken = accessToken.safeStringByRemovingPercentEncoding
-                completion(.success((this.credential, response, responseParameters)))
+                completion(.success((this.credential, response)))
             case .failure(let error):
                 completion(.failure(error))
             }
@@ -320,7 +320,7 @@ open class OAuthSwiftClient: NSObject {
                     if let onTokenRenewal = onTokenRenewal {
                         let renewCompletionHandler: OAuthSwift.TokenCompletionHandler = { result in
                             switch result {
-                            case .success(let (credential, _, _)):
+                            case .success(let (credential, _)):
                                 onTokenRenewal(.success(credential))
                                 this.requestWithAutomaticAccessTokenRenewal(url: url, method: method, parameters: parameters, headers: headers, contentType: contentType, accessTokenBasicAuthentification: accessTokenBasicAuthentification, accessTokenUrl: accessTokenUrl, onTokenRenewal: nil, completionHandler: completion)
                             case .failure(let error):

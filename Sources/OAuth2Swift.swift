@@ -133,7 +133,7 @@ open class OAuth2Swift: OAuthSwift {
                 if let expiresIn: String = responseParameters["expires_in"], let offset = Double(expiresIn) {
                     this.client.credential.oauthTokenExpiresAt = Date(timeInterval: offset, since: Date())
                 }
-                completion(.success((this.client.credential, nil, responseParameters)))
+                completion(.success((this.client.credential, nil)))
             } else if let code = responseParameters["code"] {
                 if !this.allowMissingStateCheck {
                     guard let responseState = responseParameters["state"] else {
@@ -288,7 +288,7 @@ open class OAuth2Swift: OAuthSwift {
                 case OAuthSwiftError.tokenExpired:
                     let renewCompletionHandler: TokenCompletionHandler = { result in
                         switch result {
-                        case .success(let (credential, _, _)):
+                        case .success(let (credential, _)):
                             // Ommit response parameters so they don't override the original ones
                             // We have successfully renewed the access token.
 

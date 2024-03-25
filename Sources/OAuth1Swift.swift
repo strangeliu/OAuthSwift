@@ -81,7 +81,7 @@ open class OAuth1Swift: OAuthSwift {
         }
         let completionHandler: TokenCompletionHandler = { [unowned self] result in
             switch result {
-            case .success(let (credential, _, _)):
+            case .success(let (credential, _)):
                 self.observeCallback { [weak self] url in
                     guard let this = self else { OAuthSwift.retainError(completion); return }
                     var responseParameters = [String: String]()
@@ -162,7 +162,7 @@ open class OAuth1Swift: OAuthSwift {
                 if let oauthTokenSecret=parameters["oauth_token_secret"] {
                     this.client.credential.oauthTokenSecret = oauthTokenSecret.safeStringByRemovingPercentEncoding
                 }
-                completion(.success((this.client.credential, response, parameters)))
+                completion(.success((this.client.credential, response)))
             case .failure(let error):
                 completion(.failure(error))
             }
@@ -195,7 +195,7 @@ open class OAuth1Swift: OAuthSwift {
                 if let oauthTokenSecret = parameters["oauth_token_secret"] {
                     this.client.credential.oauthTokenSecret = oauthTokenSecret.safeStringByRemovingPercentEncoding
                 }
-                completion(.success((this.client.credential, response, parameters)))
+                completion(.success((this.client.credential, response)))
 
             case .failure(let error):
                 completion(.failure(error))
