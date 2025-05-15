@@ -103,6 +103,11 @@ open class OAuth2Swift: OAuthSwift {
         #endif
         return false
     }
+    
+    private var state: String?
+    private var authorizeCompletionHandler: TokenCompletionHandler?
+    private var authorizeCallbackURL: URLConvertible?
+    private var authorizeHeaders: OAuthSwift.Headers?
 
     @discardableResult
     open func authorize(withCallbackURL callbackURL: URLConvertible?, scope: String, state: String, parameters: Parameters = [:], headers: OAuthSwift.Headers? = nil, completionHandler completion: @escaping TokenCompletionHandler) -> OAuthSwiftRequestHandle? {
@@ -112,66 +117,17 @@ open class OAuth2Swift: OAuthSwift {
             completion(.failure(.encodingError(urlString: url.string)))
             return nil
         }
+        
+        self.state = state
+        self.authorizeCompletionHandler = completion
+        self.authorizeCallbackURL = callbackURL
+        self.authorizeHeaders = headers
         self.observeCallback { [weak self] url in
-
-            OAuthSwift.log?.trace("Open application resource url: \(url.absoluteString)")
-            guard let this = self else {
+            guard let self else {
                 OAuthSwift.retainError(completion)
                 return
             }
-            var responseParameters = [String: String]()
-            if let query = url.query {
-                responseParameters += query.parametersFromQueryString
-            }
-            if let fragment = url.fragment, !fragment.isEmpty {
-                responseParameters += fragment.parametersFromQueryString
-            }
-            OAuthSwift.log?.trace("Parsed url parameters: \(responseParameters)")
-
-            if let accessToken = responseParameters["access_token"] {
-                this.client.credential.oauthToken = accessToken.safeStringByRemovingPercentEncoding
-                if let expiresIn: String = responseParameters["expires_in"], let offset = Double(expiresIn) {
-                    this.client.credential.oauthTokenExpiresAt = Date(timeInterval: offset, since: Date())
-                }
-                completion(.success((this.client.credential, nil)))
-            } else if let code = responseParameters["code"] {
-                if !this.allowMissingStateCheck {
-                    guard let responseState = responseParameters["state"] else {
-                        OAuthSwift.log?.error("Resource url: Missing 'state' parameter")
-                        completion(.failure(.missingState))
-                        return
-                    }
-                    if responseState != state {
-                        OAuthSwift.log?.error("Resource url: Unmatched 'state' parameter")
-                        completion(.failure(.stateNotEqual(state: state, responseState: responseState)))
-                        return
-                    }
-                }
-                let callbackURLEncoded: URL?
-                if let callbackURL = callbackURL {
-                    callbackURLEncoded = callbackURL.encodedURL // XXX do not known why to re-encode, maybe if string only?
-                } else {
-                    callbackURLEncoded = nil
-                }
-                if let handle = this.postOAuthAccessTokenWithRequestToken(
-                    byCode: code.safeStringByRemovingPercentEncoding,
-                    callbackURL: callbackURLEncoded, headers: headers, completionHandler: completion) {
-                    this.putHandle(handle, withKey: UUID().uuidString)
-                }
-            } else if let error = responseParameters["error"] {
-                if this.isCancelledError(responseParameters) {
-                    completion(.failure(.cancelled))
-                } else {
-                    let description = responseParameters["error_description"] ?? ""
-                    let message = NSLocalizedString(error, comment: description)
-                    OAuthSwift.log?.error("Authorization failed with: \(description)")
-                    completion(.failure(.serverError(message: message)))
-                }
-            } else {
-                let message = "No access_token, no code and no error provided by server"
-                OAuthSwift.log?.error("Authorization failed with: \(message)")
-                completion(.failure(.serverError(message: message)))
-            }
+            self.handleAuthorizeCallback(url: url)
         }
 
         var queryErrorString = ""
@@ -211,6 +167,75 @@ open class OAuth2Swift: OAuthSwift {
         }
         self.cancel() // ie. remove the observer.
         return nil
+    }
+    
+    open func handleAuthorizeCallback(url: URL) {
+        guard let state = self.state, let completion = authorizeCompletionHandler else {
+            return
+        }
+        let callbackURL = authorizeCallbackURL
+        let headers = authorizeHeaders
+        defer {
+            self.state = nil
+            self.authorizeCompletionHandler = nil
+            self.authorizeCallbackURL = nil
+            self.authorizeHeaders = nil
+        }
+        
+        OAuthSwift.log?.trace("Open application resource url: \(url.absoluteString)")
+        var responseParameters = [String: String]()
+        if let query = url.query {
+            responseParameters += query.parametersFromQueryString
+        }
+        if let fragment = url.fragment, !fragment.isEmpty {
+            responseParameters += fragment.parametersFromQueryString
+        }
+        OAuthSwift.log?.trace("Parsed url parameters: \(responseParameters)")
+
+        if let accessToken = responseParameters["access_token"] {
+            self.client.credential.oauthToken = accessToken.safeStringByRemovingPercentEncoding
+            if let expiresIn: String = responseParameters["expires_in"], let offset = Double(expiresIn) {
+                self.client.credential.oauthTokenExpiresAt = Date(timeInterval: offset, since: Date())
+            }
+            completion(.success((self.client.credential, nil)))
+        } else if let code = responseParameters["code"] {
+            if !self.allowMissingStateCheck {
+                guard let responseState = responseParameters["state"] else {
+                    OAuthSwift.log?.error("Resource url: Missing 'state' parameter")
+                    completion(.failure(.missingState))
+                    return
+                }
+                if responseState != state {
+                    OAuthSwift.log?.error("Resource url: Unmatched 'state' parameter")
+                    completion(.failure(.stateNotEqual(state: state, responseState: responseState)))
+                    return
+                }
+            }
+            let callbackURLEncoded: URL?
+            if let callbackURL = callbackURL {
+                callbackURLEncoded = callbackURL.encodedURL // XXX do not known why to re-encode, maybe if string only?
+            } else {
+                callbackURLEncoded = nil
+            }
+            if let handle = self.postOAuthAccessTokenWithRequestToken(
+                byCode: code.safeStringByRemovingPercentEncoding,
+                callbackURL: callbackURLEncoded, headers: headers, completionHandler: completion) {
+                self.putHandle(handle, withKey: UUID().uuidString)
+            }
+        } else if let error = responseParameters["error"] {
+            if self.isCancelledError(responseParameters) {
+                completion(.failure(.cancelled))
+            } else {
+                let description = responseParameters["error_description"] ?? ""
+                let message = NSLocalizedString(error, comment: description)
+                OAuthSwift.log?.error("Authorization failed with: \(description)")
+                completion(.failure(.serverError(message: message)))
+            }
+        } else {
+            let message = "No access_token, no code and no error provided by server"
+            OAuthSwift.log?.error("Authorization failed with: \(message)")
+            completion(.failure(.serverError(message: message)))
+        }
     }
 
     open func postOAuthAccessTokenWithRequestToken(byCode code: String, callbackURL: URL?, headers: OAuthSwift.Headers? = nil, completionHandler completion: @escaping TokenCompletionHandler) -> OAuthSwiftRequestHandle? {

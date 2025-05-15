@@ -26,6 +26,10 @@ open class OAuthSwift: NSObject, OAuthSwiftRequestHandle {
     init(consumerKey: String, consumerSecret: String) {
         self.client = OAuthSwiftClient(consumerKey: consumerKey, consumerSecret: consumerSecret)
     }
+    
+    deinit {
+        removeCallbackNotificationObserver()
+    }
 
     // MARK: callback notification
     struct CallbackNotification {
