@@ -6,12 +6,12 @@
 //  Copyright © 2019 Dongri Jin, Marchand Eric. All rights reserved.
 //
 
-#if targetEnvironment(macCatalyst) || os(iOS) || os(visionOS)
+#if targetEnvironment(macCatalyst) || os(iOS) || os(visionOS) || os(macOS)
 
 import AuthenticationServices
 import Foundation
 
-@available(iOS 13.0, macCatalyst 13.0, *)
+@available(iOS 13.0, macOS 11.0, macCatalyst 13.0, *)
 open class ASWebAuthenticationURLHandler: OAuthSwiftURLHandlerType {
     var webAuthSession: ASWebAuthenticationSession!
     let prefersEphemeralWebBrowserSession: Bool
@@ -36,13 +36,21 @@ open class ASWebAuthenticationURLHandler: OAuthSwiftURLHandlerType {
                     let errorCode = (error as NSError).code
                     let urlString = "\(self.callbackUrlScheme):?error=\(msg ?? "UNKNOWN")&error_domain=\(errorDomain)&error_code=\(errorCode)"
                     let url = URL(string: urlString)!
-                    #if !OAUTH_APP_EXTENSIONS
+#if !OAUTH_APP_EXTENSIONS
+#if os(macOS)
+                    NSWorkspace.shared.open(url)
+#else
                     UIApplication.shared.open(url, options: [:], completionHandler: nil)
-                    #endif
+#endif
+#endif
                 } else if let successURL = callback {
-                    #if !OAUTH_APP_EXTENSIONS
+#if !OAUTH_APP_EXTENSIONS
+#if os(macOS)
+                    NSWorkspace.shared.open(successURL)
+#else
                     UIApplication.shared.open(successURL, options: [:], completionHandler: nil)
-                    #endif
+#endif
+#endif
                 }
         })
         webAuthSession.presentationContextProvider = presentationContextProvider
@@ -54,7 +62,7 @@ open class ASWebAuthenticationURLHandler: OAuthSwiftURLHandlerType {
     }
 }
 
-@available(iOS 13.0, macCatalyst 13.0, *)
+@available(iOS 13.0, macOS 11.0, macCatalyst 13.0, *)
 extension ASWebAuthenticationURLHandler {
     static func isCancelledError(domain: String, code: Int) -> Bool {
         return domain == ASWebAuthenticationSessionErrorDomain &&
