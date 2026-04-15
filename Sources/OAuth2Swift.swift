@@ -197,6 +197,9 @@ open class OAuth2Swift: OAuthSwift {
             if let expiresIn: String = responseParameters["expires_in"], let offset = Double(expiresIn) {
                 self.client.credential.oauthTokenExpiresAt = Date(timeInterval: offset, since: Date())
             }
+            if let refreshToken = responseParameters["refresh_token"] as? String {
+                self.client.credential.oauthRefreshToken = refreshToken.safeStringByRemovingPercentEncoding
+            }
             completion(.success((self.client.credential, nil)))
         } else if let code = responseParameters["code"] {
             if !self.allowMissingStateCheck {
