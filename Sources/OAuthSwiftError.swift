@@ -103,6 +103,42 @@ public enum OAuthSwiftError: Error {
 
 }
 
+extension OAuthSwiftError: LocalizedError {
+    
+    public var errorDescription: String? {
+        switch self {
+        case .configurationError(let message):
+            return "Configuration error: \(message)"
+        case .missingState:
+            return "State missing from request"
+        case .stateNotEqual(let state, let responseState):
+            return "Returned state \"\(responseState)\" does not match expected state \"\(state)\""
+        case .serverError(let message):
+            return "Server error: \(message)"
+        case .encodingError(let urlString):
+            return "Failed to create URL from \"\(urlString)\", please encode"
+        case .requestCreation(let message):
+            return "Failed to create request: \(message)"
+        case .missingToken:
+            return "Authentication failed: no token"
+        case .retain:
+            return "Please retain OAuthSwift object or handle"
+        case .cancelled:
+            return "Request cancelled"
+        case .requestError(let error, _):
+            return "Request error: \(error.localizedDescription)"
+        case .tokenExpired(let error):
+            return "Token expired\(error.map { ": \($0.localizedDescription)" } ?? "")"
+        case .authorizationPending:
+            return "Authorization pending"
+        case .slowDown:
+            return "Polling too frequently, slow down"
+        case .accessDenied:
+            return "Access denied"
+        }
+    }
+}
+
 extension OAuthSwiftError: CustomStringConvertible {
 
     public var description: String {
